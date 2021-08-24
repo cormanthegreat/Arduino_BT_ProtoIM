@@ -180,22 +180,54 @@ void loop() {
   }
 
   if (Serial.available()) {
-    char serChar = Serial.read();
+    String serString = Serial.readStringUntil('\n');
+    char serChar = serString[0];
     int serInt = (int)serChar - 48;
-    if (serInt > 10) {
-      
-      inputStateChange(serChar);
-      
+    if(serString.length() == 1) {
+      if (serInt > 10) {      
+        inputStateChange(serChar);
+      }
+    }
+    else if(serString.length() >= 3) {
+      serString.remove(0, 2);
+      serInt = serString.toInt();
+      inputOther(serInt);
+    }
+    else {
+      Serial.println("Bad input.");
+      Serial.println("If attempting only state change simply send letter for component to-be-changed.");
+      Serial.println("Input beyond state change should be in form of \"x yyy\" ");
+      Serial.println("where x = command and yyy = number value between 0 and 100");
+      bluetooth.println("Bad input.");
+      bluetooth.println("If attempting only state change simply send letter for component to-be-changed.");
+      bluetooth.println("Input beyond state change should be in form of \"x yyy\" ");
+      bluetooth.println("where x = command and yyy = number value between 0 and 100");
     }
   }
 
   if (bluetooth.available()) {
-    char btChar = bluetooth.read();
+    String btString = bluetooth.readStringUntil('\n');
+    char btChar = btString[0];
     int btInt = (int)btChar - 48;
-    if (btInt > 10) {
-      
-      inputStateChange(btChar);
-      
+    if(btString.length() == 1) {
+      if (btInt > 10) {      
+        inputStateChange(btChar);
+      }
+    }
+    else if(btString.length() >= 3) {
+      btString.remove(0, 2);
+      btInt = btString.toInt();
+      inputOther(btInt);
+    }
+    else {
+      Serial.println("Bad input.");
+      Serial.println("If attempting only state change simply send letter for component to-be-changed.");
+      Serial.println("Input beyond state change should be in form of \"x yyy\" ");
+      Serial.println("where x = command and yyy = number value between 0 and 100");
+      bluetooth.println("Bad input.");
+      bluetooth.println("If attempting only state change simply send letter for component to-be-changed.");
+      bluetooth.println("Input beyond state change should be in form of \"x yyy\" ");
+      bluetooth.println("where x = command and yyy = number value between 0 and 100");
     }
   }
 }
@@ -228,6 +260,7 @@ void tachLogic() {
     }
   }
   else {
+    //If no tach state change then report 0 rpm and reset things
     tachNoCount++;
     if(tachNoCount > 1000)
     {
@@ -236,64 +269,89 @@ void tachLogic() {
       rpm = 0;
     }
   }
+  //Update tach state
   lastTachState = currentTachState;
+}
+
+void inputOther(int otherValue) {
+  if(otherValue <= 100 && otherValue >= 0) {
+    fanDutyCycle = otherValue;
+    setPwmDuty(fanDutyCycle);
+    Serial.print("Fan duty set to: ");
+    Serial.println(fanDutyCycle);
+    bluetooth.print("Fan duty set to: ");
+    bluetooth.println(fanDutyCycle);
+  }
+  else {
+    Serial.println("Bad input.");
+    Serial.println("If attempting only state change simply send letter for component to-be-changed.");
+    Serial.println("Input beyond state change should be in form of \"x yyy\" ");
+    Serial.println("where x = command and yyy = number value between 0 and 100");
+    bluetooth.println("Bad input.");
+    bluetooth.println("If attempting only state change simply send letter for component to-be-changed.");
+    bluetooth.println("Input beyond state change should be in form of \"x yyy\" ");
+    bluetooth.println("where x = command and yyy = number value between 0 and 100");
+  }
 }
 
 //Printout current state info on a timer
 void printInfo() {
-    Serial.println("____________________________________________");
-    bluetooth.println("____________________________");
+    Serial.println("-------------------------------------------");
+    bluetooth.println("-----------------------------");
   
     //Output bin level state
-    Serial.print("Ice level volts is approx: ");
+    Serial.print("   Ice level volts is approx: ");
     Serial.println(digiToVolts);
-    bluetooth.print("Ice level volts is approx: ");
+    bluetooth.print("   Ice level volts is approx: ");
     bluetooth.println(digiToVolts);
-    Serial.print("Ice inches from sensor is approx: ");
+    Serial.print("   Ice inches from sensor is approx: ");
     Serial.println(voltsToInches);
-    bluetooth.print("Ice inches from sensor is approx: ");
+    bluetooth.print("   Ice inches from sensor is approx: ");
     bluetooth.println(voltsToInches);
 
     //Output thermistors
-    Serial.print("Therm1 approx temp F: ");
+    Serial.print("   Therm1 approx temp F: ");
     Serial.println(thermValOne);
-    bluetooth.print("Therm1 approx temp F: ");
+    bluetooth.print("   Therm1 approx temp F: ");
     bluetooth.println(thermValOne);
-    Serial.print("Therm2 approx temp F: ");
+    Serial.print("   Therm2 approx temp F: ");
     Serial.println(thermValTwo);
-    bluetooth.print("Therm2 approx temp F: ");
+    bluetooth.print("   Therm2 approx temp F: ");
     bluetooth.println(thermValTwo);
 
     //Output IO states
-    Serial.print("Compressor state: ");
+    Serial.print("   Compressor state: ");
     Serial.println(compressorState);
-    bluetooth.print("Compressor state: ");
+    bluetooth.print("   Compressor state: ");
     bluetooth.println(compressorState);
 
-    Serial.print("Water pump state: ");
+    Serial.print("   Water pump state: ");
     Serial.println(waterpumpState);
-    bluetooth.print("Water pump state: ");
+    bluetooth.print("   Water pump state: ");
     bluetooth.println(waterpumpState);
 
-    Serial.print("Hot gas valve state: ");
+    Serial.print("   Hot gas valve state: ");
     Serial.println(hotgasState);
-    bluetooth.print("Hot gas valve state: ");
+    bluetooth.print("   Hot gas valve state: ");
     bluetooth.println(hotgasState);
 
-    Serial.print("Water valve state: ");
+    Serial.print("   Water valve state: ");
     Serial.println(watervalveState);
-    bluetooth.print("Water valve state: ");
+    bluetooth.print("   Water valve state: ");
     bluetooth.println(watervalveState);
 
-    Serial.print("Fan duty cycle: ");
+    Serial.print("   Fan duty cycle: ");
     Serial.println(fanDutyCycle);
-    bluetooth.print("Fan duty cycle: ");
+    bluetooth.print("   Fan duty cycle: ");
     bluetooth.println(fanDutyCycle);
 
-    Serial.print("Approx RPM: ");
+    Serial.print("   Approx RPM: ");
     Serial.println(rpm);
-    bluetooth.print("Approx RPM: ");
+    bluetooth.print("   Approx RPM: ");
     bluetooth.println(rpm);
+
+    Serial.println("-------------------------------------------");
+    bluetooth.println("-----------------------------");
 }
 
 //Set input states based on BT character input
@@ -361,7 +419,7 @@ void inputStateChange(char inputChar) {
       break;
 
     case FANCHAR:
-      if (fanDutyCycle == 50) {
+      if (fanDutyCycle > 0 && fanDutyCycle <= 50) {
         fanDutyCycle = 100;
         setPwmDuty(fanDutyCycle);
         Serial.println("Fan duty set to 100%");
