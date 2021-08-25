@@ -225,30 +225,35 @@ void loop() {
     }
   }
 
+  //Bluetooth cannot handle fan speed specific set currently due to readStringUntil function 
   if (bluetooth.available()) {
-    String btString = bluetooth.readStringUntil('\n');
-    char btChar = btString[0];
+//    String btString = bluetooth.readStringUntil('\n');
+//    char btChar = btString[0];
+    char btChar = bluetooth.read();
     int btInt = (int)btChar - 48;
-    if(btString.length() == 1) {
-      if (btInt > 10) {      
-        inputStateChange(btChar);
-      }
+    if (btInt > 10) {      
+      inputStateChange(btChar);
     }
-    else if(btString.length() >= 3) {
-      btString.remove(0, 2);
-      btInt = btString.toInt();
-      inputOther(btInt);
-    }
-    else {
-      Serial.println("Bad input.");
-      Serial.println("If attempting only state change simply send letter for component to-be-changed.");
-      Serial.println("Input beyond state change should be in form of \"x yyy\" ");
-      Serial.println("where x = command and yyy = number value between 0 and 100");
-      bluetooth.println("Bad input.");
-      bluetooth.println("If attempting only state change simply send letter for component to-be-changed.");
-      bluetooth.println("Input beyond state change should be in form of \"x yyy\" ");
-      bluetooth.println("where x = command and yyy = number value between 0 and 100");
-    }
+//    if(btString.length() == 1) {
+//      if (btInt > 10) {      
+//        inputStateChange(btChar);
+//      }
+//    }
+//    else if(btString.length() >= 3) {
+//      btString.remove(0, 2);
+//      btInt = btString.toInt();
+//      inputOther(btInt);
+//    }
+//    else {
+//      Serial.println("Bad input.");
+//      Serial.println("If attempting only state change simply send letter for component to-be-changed.");
+//      Serial.println("Input beyond state change should be in form of \"x yyy\" ");
+//      Serial.println("where x = command and yyy = number value between 0 and 100");
+//      bluetooth.println("Bad input.");
+//      bluetooth.println("If attempting only state change simply send letter for component to-be-changed.");
+//      bluetooth.println("Input beyond state change should be in form of \"x yyy\" ");
+//      bluetooth.println("where x = command and yyy = number value between 0 and 100");
+//    }
   }
 
   //State Machine
@@ -537,8 +542,8 @@ void inputStateChange(char inputChar) {
       else if (digitalRead(RELAY2PIN) == LOW) {
         digitalWrite(RELAY2PIN, HIGH);
         hotgasState = 1;
-        Serial.println("hot gas valve OPEN");
-        bluetooth.println("hot gas valve OPEN");
+        Serial.println("Hot gas valve OPEN");
+        bluetooth.println("Hot gas valve OPEN");
       }
       break;
 
