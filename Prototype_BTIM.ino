@@ -1,26 +1,25 @@
 #include <SoftwareSerial.h>
 
 //------------------------------------------------------------------------------------
+//Version
+int xyz = 1;
 
 //Tach defines
 const int TACH_PIN = 8;             //Tach input pin (typically resistor pull-up to 3.3V)
-float currentTachTime = 0;          //Tracking time between tach pings
-float lastTachTime = 0;             //Tracking time between tach pings
+unsigned long currentTachTime = 0;  //Tracking time between tach pings
+unsigned long lastTachTime = 0;     //Tracking time between tach pings
 int tachCount = 0;                  //Tracking tach pings per revolution (typically 2 per rev)
 int tachNoCount = 0;                //Tracking when no tach pings
-float notrpm = 0;                   //Time between pings
+float timeBetweenRevs = 0;          //Time between pings 
 float rpm = 0;                      //Time between pings converted to rpm
-static int currentTachState = LOW;  //Tracking tack input state
-static int lastTachState = LOW;     //Tracking tack input state
-int rpmAvgTotal = 0;
-int rpmAvgCounter = 0;
-float rpmAvg = 0;
+int currentTachState = LOW;         //Tracking tack input state
+int lastTachState = LOW;            //Tracking tack input state
 
 //Thermistor defines
 #define THERM1 A0
 #define THERM2 A1
-float thermValOne = 0;
-float thermValTwo = 0;
+//float thermValOne = 0;
+//float thermValTwo = 0;
 
 //IO Define
 //Compressor
@@ -85,24 +84,27 @@ int customDutyCycle = 0;
 String mainStateString = "STOP";
 //Main states
 #define STOP 0
-const String stopString = "STOP";
+#define STOPSTRING "STOP"
 #define GO 1
-const String goString = "GO";
+#define GOSTRING "GO"
 
 //Secondary state
 String secStateString = "BINFULL/IDLE/OFF";
 //Seconadry States
 #define BINFULL 0
-const String binfullString = "BINFULL/IDLE/OFF";
+#define BINFULLSTRING "BINFULL/IDLE/OFF"
 float maxBinfullTimeMin = 1;
+
 #define FREEZE 1
-const String freezeString = "FREEZE";
+#define FREEZESTRING "FREEZE"
 float maxFreezeTimeMin = 35;
+
 #define HARVEST 2
-const String harvestString = "HARVEST";
+#define HARVESTSTRING "HARVEST"
 float maxHarvestTimeMin = 5;
+
 #define FILL 3
-const String flushString = "FILLFLUSH";
+#define FILLSTRING "FILL"
 float maxFillTimeMin = 2;
 
 //Make ice state machine
@@ -113,7 +115,7 @@ char secState = 0;
 float mainStateTimerMin = 0;      //Min in main state
 float secStateTimerMin = 0;       //Min in secondary state
 float timeInStateMin = 0;   //Trackercounter for minutes in state
-float timeInStateSec = 0;   //Trackercounter for seconds in state
+//float timeInStateSec = 0;   //Trackercounter for seconds in state
 
 //Relay defines
 #define RELAY1PIN 4 //Water valve
@@ -203,15 +205,7 @@ void loop() {
 
   //Do tach related logic
   tachLogic();
-  //
-  //  rpmAvgTotal += rpm;
-  //  rpmAvgCounter++;
-  //  if(rpmAvgCounter >= 100) {
-  //    rpmAvg = rpmAvgTotal/100;
-  //    rpmAvgCounter = 0;
-  //    rpmAvgTotal = 0;
-  //  }
-
+  
   //Timer for updating info over BT/Serial
   if (timems >= (timeCheckA + UPDATETIMER)) {
     //Reset check timer
@@ -223,8 +217,6 @@ void loop() {
 
   if (Serial.available()) {
     String serString = Serial.readStringUntil('\n');
-    Serial.print("String is: ");
-    Serial.println(serString);
     char serChar = serString[0];
     int serInt = (int)serChar - 48;
     if (serString.length() == 1) {
@@ -248,6 +240,7 @@ void loop() {
       bluetooth.println("where x = command and yyy = number value between 0 and 100");
     }
   }
+
 
   //Bluetooth cannot handle fan speed specific set currently due to readStringUntil function
   if (bluetooth.available()) {
@@ -287,13 +280,13 @@ void loop() {
 void stateMachLogic() {
 
   if (mainState == GO) {
-    mainStateString = goString;
+    mainStateString = GOSTRING;
     mainStateTimerMin += timemin - timeInStateMin;
     secStateTimerMin += timemin - timeInStateMin;
 
     //Freeze state handling
     if (secState == FREEZE) {
-      secStateString = freezeString;
+      secStateString = FREEZESTRING;
 
       //Special case suspend water for ~30sec at start of every freeze
       //TODO CLEANUP
@@ -322,7 +315,7 @@ void stateMachLogic() {
     }
     //Harvest state handling
     else if (secState == HARVEST) {
-      secStateString = harvestString;
+      secStateString = HARVESTSTRING;
       if (secStateTimerMin >= maxHarvestTimeMin) {
         secState = FREEZE;
         inputStateChange(FREEZECHAR);
@@ -332,7 +325,7 @@ void stateMachLogic() {
     }
     //Flush (fill) handling state
     else if (secState == FILL) {
-      secStateString = flushString;
+      secStateString = FILLSTRING;
       if (secStateTimerMin >= maxFillTimeMin) {
         secState = FREEZE;
         inputStateChange(FREEZECHAR);
@@ -341,12 +334,12 @@ void stateMachLogic() {
     }
   }
   else {
-    mainStateString = stopString;
+    mainStateString = STOPSTRING;
     mainStateTimerMin = 0;
     secStateTimerMin = 0;
   }
   timeInStateMin = timemin;
-  timeInStateSec = timesec;
+//  timeInStateSec = timesec;
 }
 
 //Set PWM duty cycle
@@ -356,8 +349,8 @@ void setPwmDuty(byte duty) {
 
 //Thermistor logic
 void thermLogic() {
-  thermValOne = analogRead(THERM1);
-  thermValTwo = 0;//analogRead(THERM2);
+//  thermValOne = analogRead(THERM1);
+//  thermValTwo = 0;//analogRead(THERM2);
 }
 
 //Tach logic
@@ -369,8 +362,8 @@ void tachLogic() {
     tachCount++;
     //Two pulses per revolution
     if (tachCount >= 2) {
-      notrpm = currentTachTime - lastTachTime;
-      rpm = 1 / ((notrpm / 1000) / 60);
+      timeBetweenRevs = currentTachTime - lastTachTime;
+      rpm = 1 / ((timeBetweenRevs / 1000) / 60);
       tachCount = 0;
       lastTachTime = currentTachTime;
     }
@@ -378,10 +371,10 @@ void tachLogic() {
   else {
     //If no tach state change then report 0 rpm and reset things
     tachNoCount++;
-    if (tachNoCount > 1000)
+    if (tachNoCount > 10000)
     {
       tachNoCount = 0;
-      notrpm = 0;
+      timeBetweenRevs = 0;
       rpm = 0;
     }
   }
@@ -489,6 +482,13 @@ void printInfo() {
   Serial.println("-------------------------------------------");
   bluetooth.println("-----------------------------");
 
+  
+  //Output bin level state
+  Serial.print("V");
+  Serial.println(xyz);
+  bluetooth.print("V");
+  bluetooth.println(xyz);
+
   //Output bin level state
   Serial.print("   Ice level volts is approx: ");
   Serial.println(digiToVolts);
@@ -499,15 +499,15 @@ void printInfo() {
   bluetooth.print("   Ice inches from sensor is approx: ");
   bluetooth.println(voltsToInches);
 
-  //Output thermistors
-  Serial.print("   Therm1 approx temp F: ");
-  Serial.println(thermValOne);
-  bluetooth.print("   Therm1 approx temp F: ");
-  bluetooth.println(thermValOne);
-  Serial.print("   Therm2 approx temp F: ");
-  Serial.println(thermValTwo);
-  bluetooth.print("   Therm2 approx temp F: ");
-  bluetooth.println(thermValTwo);
+//  //Output thermistors
+//  Serial.print("   Therm1 approx temp F: ");
+//  Serial.println(thermValOne);
+//  bluetooth.print("   Therm1 approx temp F: ");
+//  bluetooth.println(thermValOne);
+//  Serial.print("   Therm2 approx temp F: ");
+//  Serial.println(thermValTwo);
+//  bluetooth.print("   Therm2 approx temp F: ");
+//  bluetooth.println(thermValTwo);
 
   //Output IO states
   Serial.print("   Compressor state: ");
@@ -539,11 +539,6 @@ void printInfo() {
   Serial.println(rpm);
   bluetooth.print("   Instant RPM: ");
   bluetooth.println(rpm);
-
-  Serial.print("   Avg RPM over last 100 readings: ");
-  Serial.println(rpmAvg);
-  bluetooth.print("   Avg RPM over last 100 readings: ");
-  bluetooth.println(rpmAvg);
 
   Serial.print("   Main state: ");
   Serial.println(mainStateString);
@@ -659,7 +654,7 @@ void inputStateChange(char inputChar) {
     case FREEZECHAR:
       Serial.println("Freezing...");
       bluetooth.println("Freezing...");
-      secStateString = freezeString;
+      secStateString = FREEZESTRING;
 
       //Compressor ON
       digitalWrite(RELAY4PIN, HIGH);
@@ -684,7 +679,7 @@ void inputStateChange(char inputChar) {
     case HARVESTCHAR:
       Serial.println("Harvesting...");
       bluetooth.println("Harvesting...");
-      secStateString = harvestString;
+      secStateString = HARVESTSTRING;
 
       //Compressor ON
       digitalWrite(RELAY4PIN, HIGH);
@@ -707,7 +702,7 @@ void inputStateChange(char inputChar) {
       //Special case flush
       Serial.println("Filling/flushing...");
       bluetooth.println("Filling/flushing...");
-      secStateString = flushString;
+      secStateString = FILLSTRING;
 
       //Compressor ON
       digitalWrite(RELAY4PIN, HIGH);
@@ -729,7 +724,7 @@ void inputStateChange(char inputChar) {
     case STOPCHAR:
       Serial.println("Stop! All components OFF/CLOSED");
       bluetooth.println("Stop! All components OFF/CLOSED");
-      secStateString = binfullString;
+      secStateString = BINFULLSTRING;
 
       //Compressor OFF
       digitalWrite(RELAY4PIN, LOW);
@@ -749,9 +744,9 @@ void inputStateChange(char inputChar) {
 
       //Set main state to stop/off
       mainState = STOP;
-      mainStateString = stopString;
+      mainStateString = STOPSTRING;
       secState = BINFULL;
-      secStateString = binfullString;
+      secStateString = BINFULLSTRING;
 
       mainStateTimerMin = 0;
       secStateTimerMin = 0;
