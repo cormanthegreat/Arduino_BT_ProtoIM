@@ -2,7 +2,7 @@
 
 //------------------------------------------------------------------------------------
 //Version
-#define VERSION 1
+#define VERSION 2
 
 //Tach defines
 const int TACH_PIN = 8;             //Tach input pin (typically resistor pull-up to 3.3V)
