@@ -2,7 +2,7 @@
 
 //------------------------------------------------------------------------------------
 //Version
-int xyz = 1;
+#define VERSION 1
 
 //Tach defines
 const int TACH_PIN = 8;             //Tach input pin (typically resistor pull-up to 3.3V)
@@ -137,6 +137,7 @@ const word PWM_FREQ_HZ = 25000; //Adjust this value to adjust the frequency
 const word TCNT1_TOP = 16000000 / (2 * PWM_FREQ_HZ);
 
 //Bin Ice level defines
+#define BINFULLINCHES 10
 int iceLevelAnalogPin = A0;
 int digitalIceLevel = 0;
 float digiToVolts = 0;
@@ -292,16 +293,16 @@ void stateMachLogic() {
       //TODO CLEANUP
       if (secStateTimerMin <= 0.5) {
         if (watervalveState == 0) {
-          Serial.print("Topoff/suspend water for 30sec at start of freeze...");
-          bluetooth.print("Topoff/suspend water for 30sec at start of freeze...");
+          Serial.println("Topoff/suspend water for 30sec at start of freeze...");
+          bluetooth.println("Topoff/suspend water for 30sec at start of freeze...");
           digitalWrite(RELAY1PIN, HIGH);
           watervalveState = 1;
         }
       }
       else {
         if (watervalveState == 1) {
-          Serial.print("Topoff/suspend water complete.");
-          bluetooth.print("Topoff/suspend water complete.");
+          Serial.println("Topoff/suspend water complete.");
+          bluetooth.println("Topoff/suspend water complete.");
           digitalWrite(RELAY1PIN, LOW);
           watervalveState = 0;
         }
@@ -317,10 +318,37 @@ void stateMachLogic() {
     else if (secState == HARVEST) {
       secStateString = HARVESTSTRING;
       if (secStateTimerMin >= maxHarvestTimeMin) {
-        secState = FREEZE;
-        inputStateChange(FREEZECHAR);
-        secStateTimerMin = 0;
+        if(voltsToInches < BINFULLINCHES) {
+          secState = BINFULL;
+          secStateTimerMin = 0; 
 
+
+          Serial.println("Binfull! Resume when bin melts...");
+          bluetooth.println("Binfull! Resume when bin melts...");
+          secStateString = BINFULLSTRING;
+    
+          //Compressor OFF
+          digitalWrite(RELAY4PIN, LOW);
+          compressorState = 0;
+          //Water pump OFF
+          digitalWrite(RELAY3PIN, LOW);
+          waterpumpState = 0;
+          //Hot gas OPEN
+          digitalWrite(RELAY2PIN, LOW);
+          hotgasState = 0;
+          //Water valve OPEN
+          digitalWrite(RELAY1PIN, LOW);
+          watervalveState = 0;
+          //Fan 0%
+          fanDutyCycle = 0;
+          setPwmDuty(fanDutyCycle);
+
+        }
+        else {
+          secState = FREEZE;
+          inputStateChange(FREEZECHAR);
+          secStateTimerMin = 0; 
+        }
       }
     }
     //Flush (fill) handling state
@@ -330,6 +358,13 @@ void stateMachLogic() {
         secState = FREEZE;
         inputStateChange(FREEZECHAR);
         secStateTimerMin = 0;
+      }
+    }
+    else if (secState == BINFULL) {
+      if(voltsToInches >= BINFULLINCHES) {
+        secState = FREEZE;
+        inputStateChange(FREEZECHAR);
+        secStateTimerMin = 0; 
       }
     }
   }
@@ -453,7 +488,7 @@ void inputOther(char controlChar, int otherValue) {
     case HARVESTCHAR:
       if (otherValue <= 100 && otherValue >= 0) {
         maxHarvestTimeMin = otherValue;
-        Serial.print("harvest state minute duration set to: ");
+        Serial.print("Harvest state minute duration set to: ");
         Serial.println(maxHarvestTimeMin);
         bluetooth.print("Harvest state minute duration set to: ");
         bluetooth.println(maxHarvestTimeMin);
@@ -485,9 +520,9 @@ void printInfo() {
   
   //Output bin level state
   Serial.print("V");
-  Serial.println(xyz);
+  Serial.println(VERSION);
   bluetooth.print("V");
-  bluetooth.println(xyz);
+  bluetooth.println(VERSION);
 
   //Output bin level state
   Serial.print("   Ice level volts is approx: ");
@@ -545,7 +580,7 @@ void printInfo() {
   bluetooth.print("   Main state: ");
   bluetooth.println(mainStateString);
 
-  Serial.print("   Main state minuntes: ");
+  Serial.print("   Main state minutes: ");
   Serial.println(mainStateTimerMin);
   bluetooth.print("   Main state minutes: ");
   bluetooth.println(mainStateTimerMin);
